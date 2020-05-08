@@ -1,0 +1,36 @@
+{
+  "name": "simplify-converter",
+  "version": "0.1.3",
+  "description": "AWS Simplify Converter from Serverless into OpenAPI 3.0",
+  "main": "converter.js",
+  "bin": {
+    "simplify-converter": "converter.js"
+  },
+  "scripts": {
+    "start": "node converter.js serverless -i spec.yaml -o ../output"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simplify-framework/converter.git"
+  },
+  "keywords": [
+    "converter",
+    "lambda",
+    "aws"
+  ],
+  "author": "Duong Dinh Cuong",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/simplify-framework/converter/issues"
+  },
+  "homepage": "https://github.com/simplify-framework/converter#README",
+  "dependencies": {
+    "hogan.js": "^3.0.2",
+    "reftools": "^1.1.1",
+    "rimraf": "^3.0.2",
+    "uuid": "^3.4.0",
+    "yaml": "^1.9.1",
+    "yargs": "^14.2.3",
+    "yaml-lint": "^1.2.4"
+  }
+}

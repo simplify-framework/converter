@@ -1,0 +1,66 @@
+openapi: 3.0.0
+info:
+  version: demo
+  title: {{ProjectDesc}}
+x-api-gateway-name: {{ProjectName}}Gateway
+x-deployment-name: {{ProjectName}}
+x-deployment-region: {{DeploymentRegion}}
+x-deployment-profile: {{AWSProfile}}
+x-api-hystrix-dashboard: false
+paths:
+  {{#ResourcePaths}}
+  '/{{ResourcePath}}':
+    {{#ResourceData}}
+    {{#-first}}
+    {{ResourceType}}-service-name: {{ServiceName}}
+    {{ResourceType}}-service-version: 0.1.1
+    {{#ServiceTag}}
+    {{ResourceType}}-service-tag: {{ServiceTag}}
+    {{/ServiceTag}}
+    {{#ServiceLang}}
+    {{ResourceType}}-service-lang: {{ServiceLang}}
+    {{/ServiceLang}}
+    {{#ServiceRuntime}}
+    {{ResourceType}}-service-runtime: {{ServiceRuntime}}
+    {{/ServiceRuntime}}
+    {{#ServiceModel}}
+    {{ResourceType}}-service-model-name: {{ServiceModel}}
+    {{ResourceType}}-service-model-legacy: true
+    {{ResourceType}}-service-request-validation: false
+    {{/ServiceModel}}
+    {{#HystrixStream}}
+    {{ResourceType}}-service-hystrix-stream: {{HystrixStream}}
+    {{/HystrixStream}}
+    {{#hasServiceResource}}
+    {{ResourceType}}-service-resources:
+      {{#ServiceResources}}
+      - {{Value}}
+      {{/ServiceResources}}
+    {{/hasServiceResource}}
+    {{#hasServicePolicy}}
+    {{ResourceType}}-service-policies:
+      {{#ServicePolicies}}
+      - {{Value}}
+      {{/ServicePolicies}}
+    {{/hasServicePolicy}}
+    {{/-first}}
+    {{ResourceMethod}}:
+      {{#ServiceTag}}
+      tags:
+        - {{ServiceTag}}
+      {{/ServiceTag}}
+      description: {{Description}} Information
+      operationId: {{OperationName}}
+      responses:
+        '200':
+          description: Success
+    {{/ResourceData}}
+  {{/ResourcePaths}}
+servers:
+  - url: /
+{{#hasGlobalResource}}
+x-aws-global-resources:
+  {{#GlobalResources}}
+  - {{Value}}
+  {{/GlobalResources}}
+{{/hasGlobalResource}}

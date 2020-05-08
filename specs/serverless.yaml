@@ -1,0 +1,42 @@
+# For full config options, check the docs:
+#    docs.serverless.com
+#    https://serverless.com/framework/docs/providers/aws/guide/serverless.yml/
+#
+# Happy Coding!
+
+service: pets-service
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+functions:
+  get-pets-list:
+    handler: src/handlers/index.handler
+    events:
+      - http:
+          method: get
+          path: pets
+          description: Retrieve list of pets.
+
+plugins:
+  - serverless-webpack
+  - serverless-plugin-log-retention
+
+resources:
+  Resources:
+    SharedFileResourcesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: my-shared-files-bucket
+        CorsConfiguration:
+          CorsRules:
+            - AllowedMethods:
+                - GET
+                - POST
+              AllowedOrigins:
+                - "*"
+              AllowedHeaders:
