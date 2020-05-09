@@ -1,4 +1,4 @@
-# AWS Simplify Converter
+# Simplify Converter
   
 This is a facility toolkit to support converting from Serverless framework's YAML definition to OpenAPI 3.0 specs that compatible with Simplify specs definition.
 
@@ -79,4 +79,4 @@ Mappings:
       ServicePolicies:
         - Value: my-extra-policy.yaml
 ```
-***AWS Simplify Toolkit @Copyright 2020***
+***Simplify Toolkit @Copyright 2020***
