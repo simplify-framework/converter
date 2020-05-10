@@ -2,11 +2,12 @@ openapi: 3.0.0
 info:
   version: demo
   title: {{ProjectDesc}}
+x-project-name: {{ProjectName}}
 x-api-gateway-name: {{ProjectName}}Gateway
-x-deployment-name: {{ProjectName}}
+x-deployment-name: {{DeploymentName}}
 x-deployment-region: {{DeploymentRegion}}
 x-deployment-profile: {{AWSProfile}}
-x-api-hystrix-dashboard: false
+x-api-authorizer-id: {{CognitoUserPoolId}}
 paths:
   {{#ResourcePaths}}
   '/{{ResourcePath}}':
@@ -25,8 +26,8 @@ paths:
     {{/ServiceRuntime}}
     {{#ServiceModel}}
     {{ResourceType}}-service-model-name: {{ServiceModel}}
-    {{ResourceType}}-service-model-legacy: true
-    {{ResourceType}}-service-request-validation: false
+    {{ResourceType}}-service-passthrough: true
+    {{ResourceType}}-service-validation: false
     {{/ServiceModel}}
     {{#HystrixStream}}
     {{ResourceType}}-service-hystrix-stream: {{HystrixStream}}

@@ -1,13 +1,13 @@
 {
   "name": "simplify-converter",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Simplify Converter from Serverless into OpenAPI 3.0",
   "main": "converter.js",
   "bin": {
     "simplify-converter": "converter.js"
   },
   "scripts": {
-    "start": "node converter.js serverless -i spec.yaml -o ../output"
+    "start": "node converter.js serverless -i specs/serverless.yaml -o ../output -c specs/config.yaml"
   },
   "repository": {
     "type": "git",
