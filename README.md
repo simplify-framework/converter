@@ -61,22 +61,15 @@ Mapping Configuration: `config.yaml`
 ```
 ProjectName: ServerlessAPI
 ProjectDesc: Serverless to OpenAPI 3.0 specs
-ApiGatewayName: serverless-example
-DeploymentRegion: eu-central-1
-AWSProfile: proto-eu-central-1
+DeploymentName: serverless-dev
+DeploymentRegion: eu-west-1
+DeploymentProfile: simplify-eu
 Mappings:
   Functions:
     'get-pets-list':
-      ServiceLang: javascript
       ServiceName: pets-service
-      ServiceTag: serverless-converted
       ServiceModel: pets
-      ResourcePath: pets
-      ResourceMethod: post
-      ServiceResources:
-        - Value: dynamodb.yaml
-        - Value: my-sns.yaml
-      ServicePolicies:
-        - Value: my-extra-policy.yaml
 ```
+TODO: there will be no need to have this!
+(Possible to convert directly from yaml)
 ***Simplify Toolkit @Copyright 2020***
