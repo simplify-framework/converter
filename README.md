@@ -1,5 +1,8 @@
 # Simplify Framework - Converter
   
+![NPM Downloads](https://img.shields.io/npm/dw/simplify-converter)
+![Package Version](https://img.shields.io/github/package-json/v/simplify-framework/converter?color=green)
+
 This is a facility toolkit to support converting from Serverless framework's YAML definition to OpenAPI 3.0 specs that compatible with Simplify specs definition.
 
 *Node.js-based command line toolkit requires node >= 8.x version or later.*
