@@ -1,0 +1,13 @@
+{
+    "Profile": "{{DeploymentProfile}}",
+    "Region": "{{DeploymentRegion}}",
+    "Bucket": {
+        "Name": "{{ProjectNameSnake}}-external-resources",
+        "Key": "stacks/${DATE_TODAY}"
+    },
+    "OutputFile": "{{ProjectNameSnake}}-meta.json",
+    "Deployment": {
+        "Name": "{{ProjectName}}",
+        "Definition": "{{ProjectName}}.yaml"
+    }
+}

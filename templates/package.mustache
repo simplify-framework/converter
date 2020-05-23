@@ -1,0 +1,14 @@
+{
+    "name": "{{ProjectNameSnake}}-external-resource",
+    "version": "0.1.0",
+    "description": "Manage external resources",
+    "scripts": {
+        "stack-deploy": "node resource-create.js --input resource-input.json",
+        "stack-destroy": "node resource-create.js --input resource-input.json --deletion"
+    },
+    "license": "MIT",
+    "private": true,
+    "devDependencies": {
+        "simplify-sdk": "^0.1.10"
+    }
+}

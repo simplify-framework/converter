@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: External resource stack creation using Simplify CLI
+Parameters:
+  DeploymentStage:
+    Type: String
+    Default: 'latest'
+    AllowedValues:
+    - stable
+    - latest
+Outputs:
+  Region:
+    Description: AWS Deployment Region
+    Value: !Ref AWS::Region
