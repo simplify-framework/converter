@@ -54,6 +54,9 @@ functions:
           method: get
           path: pets
           description: Retrieve list of pets.
+      - schedule: rate(2 hours)
+      - cloudwatchLog: '/aws/lambda/hello'
+      - sns: dispatch
 
 plugins:
   - serverless-webpack

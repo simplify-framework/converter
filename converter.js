@@ -158,7 +158,7 @@ function main(config, specs) {
     const externalResource = buildExternalResources(config.ProjectName, Resources, IAMRolePolicy)
     writeYAMLFile(`${config.ProjectName}.yaml`, externalResource, argv.output, 'resources')
     const outputFile = path.join(argv.output, "resources")
-    writeTemplateFile("package.mustache", { ProjectNameSnake: config.ProjectName.toSnake() }, outputFile, "package.json")
+    writeTemplateFile("package.mustache", { ProjectNameSnake: config.ProjectName.toPascalCase().toSnake() }, outputFile, "package.json")
     writeTemplateFile("resource-create.mustache", {
         ProjectName: config.ProjectName,
         ProjectNameSnake: config.ProjectName.toSnake(),
@@ -174,27 +174,38 @@ function main(config, specs) {
     var ResourcePaths = {}
     Object.keys(o.functions).map(function (k) {
         if (o.functions[k].events) {
-            var service = {}
-            if (service) {
-                o.functions[k].events.map(function (evt) {
-                    if (evt.http) {
-                        service.ServiceName = o.service
-                        service.ResourceType = 'x-api'
-                        service.ServicePolicy = o.iamRoleStatements
-                        service.ServiceRuntime = o.provider.runtime || 'nodejs12.x'
-                        service.ResourcePath = service.ResourcePath || evt.http.path.toLowerCase()
-                        service.ResourceMethod = service.ResourceMethod || evt.http.method.toLowerCase()
-                        service.OperationName = service.OperationName || k.toCamelCase()
-                        service.Description = service.OperationName.toTextSpace()
-                        service.hasServiceResource = service.ServiceResources ? true : false
-                        service.hasServicePolicy = service.ServicePolicies ? true : false
-                        if (!ResourcePaths[service.ResourcePath]) {
-                            ResourcePaths[service.ResourcePath] = []
-                        }
-                        ResourcePaths[service.ResourcePath].push(service)
-                    }
-                })
-            }
+            o.functions[k].events.map(function (evt) {
+                var service = {}
+                if (evt.http) {
+                    service.ResourceType = 'x-api'
+                    service.ServicePublic = true    
+                    service.ServiceTemplate = 'flatted'
+                    service.ResourcePath = service.ResourcePath || evt.http.path.toLowerCase()
+                    service.ResourceMethod = service.ResourceMethod || evt.http.method.toLowerCase()
+                } else if (evt.schedule) {
+                    service.ResourceType = 'x-event'
+                    service.ResourceMethod = 'patch'
+                    service.ServiceTemplate = 'flatted'
+                    service.ServiceSchedule = evt.schedule
+                    service.ResourcePath = service.ResourcePath || k + '/schedule'
+                } else {
+                    service.ResourceType = 'x-event'
+                    service.ResourceMethod = 'patch'
+                    service.ServiceTemplate = 'flatted'
+                    service.ServiceSchedule = evt.schedule
+                    service.ResourcePath = service.ResourcePath || k + '/' + Object.keys(evt)[0].toPascalCase().toSnake()
+                    service.ServiceTag = evt[Object.keys(evt)[0]]
+                }
+                service.ServiceName = o.service
+                service.ServicePolicy = o.iamRoleStatements
+                service.ServiceRuntime = o.provider.runtime || 'nodejs12.x'
+                service.OperationName = service.OperationName || k.toCamelCase()
+                service.Description = service.OperationName.toTextSpace()
+                if (!ResourcePaths[service.ResourcePath]) {
+                    ResourcePaths[service.ResourcePath] = []
+                }
+                ResourcePaths[service.ResourcePath].push(service)
+            })
         }
     })
     const oYAML = fs.readFileSync(path.resolve(__dirname, 'templates', 'openapi.mustache'), 'utf8')

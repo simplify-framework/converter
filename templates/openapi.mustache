@@ -16,38 +16,25 @@ paths:
     {{#ResourceData}}
     {{#-first}}
     {{ResourceType}}-service-name: {{ServiceName}}
-    {{#ServiceTag}}
-    {{ResourceType}}-service-tag: {{ServiceTag}}
-    {{/ServiceTag}}
-    {{#ServiceLang}}
-    {{ResourceType}}-service-lang: {{ServiceLang}}
-    {{/ServiceLang}}
+    {{#ServicePublic}}
+    {{ResourceType}}-service-public: {{ServicePublic}}
+    {{/ServicePublic}}
+    {{#ServiceTemplate}}
+    {{ResourceType}}-service-template: {{ServiceTemplate}}
+    {{/ServiceTemplate}}
     {{#ServiceRuntime}}
     {{ResourceType}}-service-runtime: {{ServiceRuntime}}
     {{/ServiceRuntime}}
-    {{#ServicePolicy}}
-    {{ResourceType}}-service-policy: {{ServicePolicy}}
-    {{/ServicePolicy}}
+    {{#ServiceSchedule}}
+    {{ResourceType}}-service-schedule: {{ServiceSchedule}}
+    {{/ServiceSchedule}}
     {{#ServiceModel}}
     {{ResourceType}}-service-model-name: {{ServiceModel}}
-    {{ResourceType}}-service-passthrough: true
     {{ResourceType}}-service-validation: false
     {{/ServiceModel}}
-    {{#HystrixStream}}
-    {{ResourceType}}-service-hystrix-stream: {{HystrixStream}}
-    {{/HystrixStream}}
-    {{#hasServiceResource}}
-    {{ResourceType}}-service-resources:
-      {{#ServiceResources}}
-      - {{Value}}
-      {{/ServiceResources}}
-    {{/hasServiceResource}}
-    {{#hasServicePolicy}}
-    {{ResourceType}}-service-policies:
-      {{#ServicePolicies}}
-      - {{Value}}
-      {{/ServicePolicies}}
-    {{/hasServicePolicy}}
+    {{#ServicePassthrough}}
+    {{ResourceType}}-service-passthrough: {{ServicePassthrough}}
+    {{/ServicePassthrough}}
     {{/-first}}
     {{ResourceMethod}}:
       {{#ServiceTag}}
