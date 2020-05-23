@@ -16,12 +16,13 @@ paths:
     {{#ResourceData}}
     {{#-first}}
     {{ResourceType}}-service-name: {{ServiceName}}
-    {{#ServicePublic}}
     {{ResourceType}}-service-public: {{ServicePublic}}
-    {{/ServicePublic}}
     {{#ServiceTemplate}}
     {{ResourceType}}-service-template: {{ServiceTemplate}}
     {{/ServiceTemplate}}
+    {{#ServiceType}}
+    {{ResourceType}}-service-type: {{ServiceType}}
+    {{/ServiceType}}
     {{#ServiceRuntime}}
     {{ResourceType}}-service-runtime: {{ServiceRuntime}}
     {{/ServiceRuntime}}
@@ -37,12 +38,14 @@ paths:
     {{/ServicePassthrough}}
     {{/-first}}
     {{ResourceMethod}}:
-      {{#ServiceTag}}
+      {{#HasServiceTags}}
       tags:
+      {{#ServiceTags}}
         - {{ServiceTag}}
-      {{/ServiceTag}}
+      {{/ServiceTags}}
+      {{/HasServiceTags}}
       description: {{Description}} Information
-      operationId: {{OperationName}}
+      x-control-operation-id: {{OperationName}}
       responses:
         '200':
           description: Success

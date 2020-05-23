@@ -42,7 +42,9 @@ functions:
           description: Retrieve list of pets.
       - schedule: rate(2 hours)
       - cloudwatchLog: '/aws/lambda/hello'
-      - sns: dispatch
+      - sns:
+          arn: arn:aws:sns:us-east-1:00000000000:topicname
+          topicName: topicname-account-1-us-east-1
 plugins:
   - serverless-webpack
   - serverless-plugin-log-retention

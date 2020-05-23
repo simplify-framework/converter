@@ -121,7 +121,6 @@ function writeTemplateFile(tplFile, data, outputPath, file) {
     if (!fs.existsSync(outputPath)) {
         mkdirp.sync(outputPath);
     }
-    console.log("Generating Resource Specs...", filename)
     fs.writeFileSync(filename, dataFile, 'utf8');
 }
 
@@ -132,7 +131,6 @@ function writeYAMLFile(rName, data, output, location) {
     if (!fs.existsSync(filePath)) {
         mkdirp.sync(filePath);
     }
-    console.log("Generating Resource Specs...", filename)
     fs.writeFileSync(filename, yaml.stringify(rYaml), 'utf8');
 }
 
@@ -156,6 +154,8 @@ function main(config, specs) {
     })
     const IAMRolePolicy = extractServicePolicy(config.ProjectName, o.provider.iamRoleStatements)
     const externalResource = buildExternalResources(config.ProjectName, Resources, IAMRolePolicy)
+    
+    console.log(" - Working for External Resources...")
     writeYAMLFile(`${config.ProjectName}.yaml`, externalResource, argv.output, 'resources')
     const outputFile = path.join(argv.output, "resources")
     writeTemplateFile("package.mustache", { ProjectNameSnake: config.ProjectName.toPascalCase().toSnake() }, outputFile, "package.json")
@@ -171,36 +171,58 @@ function main(config, specs) {
         ...config
     }, outputFile, "resource-input.json")
 
+    console.log(" - Working for OpenAPI 3.0 Specs...")
     var ResourcePaths = {}
     Object.keys(o.functions).map(function (k) {
         if (o.functions[k].events) {
             o.functions[k].events.map(function (evt) {
-                var service = {}
+                var service = { ServicePublic: false }
                 if (evt.http) {
                     service.ResourceType = 'x-api'
-                    service.ServicePublic = true    
+                    service.ServicePublic = true
+                    service.ServiceType = 'rest-api'
                     service.ServiceTemplate = 'flatted'
+                    service.ServiceName = k.toPascalCase().toSnake() + '-' + service.ServiceType
                     service.ResourcePath = service.ResourcePath || evt.http.path.toLowerCase()
-                    service.ResourceMethod = service.ResourceMethod || evt.http.method.toLowerCase()
+                    service.ResourceMethod = service.ResourceMethod || evt.http.method.toLowerCase()                    
                 } else if (evt.schedule) {
                     service.ResourceType = 'x-event'
                     service.ResourceMethod = 'patch'
                     service.ServiceTemplate = 'flatted'
+                    service.ServiceType = 'event-rule'
                     service.ServiceSchedule = evt.schedule
-                    service.ResourcePath = service.ResourcePath || k + '/schedule'
+                    service.ServiceName = k.toPascalCase().toSnake() + '-' + service.ServiceType
+                    service.ResourcePath = k.toPascalCase().toSnake() + '/' + service.ServiceType
                 } else {
                     service.ResourceType = 'x-event'
                     service.ResourceMethod = 'patch'
                     service.ServiceTemplate = 'flatted'
-                    service.ServiceSchedule = evt.schedule
-                    service.ResourcePath = service.ResourcePath || k + '/' + Object.keys(evt)[0].toPascalCase().toSnake()
-                    service.ServiceTag = evt[Object.keys(evt)[0]]
+                    service.ServiceType = Object.keys(evt)[0].toPascalCase().toSnake()
+                    service.ServiceName = k.toPascalCase().toSnake() + '-' + service.ServiceType
+                    service.ResourcePath = k.toPascalCase().toSnake() + '/' + service.ServiceType
+                    service.ServiceTags = evt[Object.keys(evt)[0]]
+                    service.HasServiceTags = true
+                    if (typeof service.ServiceTags === 'object') {
+                        if (Array.isArray(service.ServiceTags)) {
+                            service.ServiceTags = service.ServiceTags.map((tag, idx) => {
+                                const value = Object.keys(tag).map(k => {
+                                    return `${k}(${tag[k]})`
+                                })
+                                return { ServiceTag: `Name=${idx},Value=${value}` }
+                            })
+                        } else {
+                            service.ServiceTags = Object.keys(service.ServiceTags).map(k => {
+                                return { ServiceTag: `Name=${k},Value=${service.ServiceTags[k]}` }
+                            })
+                        }
+                    } else {
+                        service.ServiceTags = [{ ServiceTag: service.ServiceTags }]
+                    }
                 }
-                service.ServiceName = o.service
                 service.ServicePolicy = o.iamRoleStatements
                 service.ServiceRuntime = o.provider.runtime || 'nodejs12.x'
                 service.OperationName = service.OperationName || k.toCamelCase()
-                service.Description = service.OperationName.toTextSpace()
+                service.Description = service.OperationName.toPascalCase().toTextSpace()
                 if (!ResourcePaths[service.ResourcePath]) {
                     ResourcePaths[service.ResourcePath] = []
                 }
@@ -216,7 +238,6 @@ function main(config, specs) {
         mkdirp.sync(argv.output);
     }
     var filename = path.resolve(path.join(argv.output, 'openapi.yaml'))
-    console.log("Generating OpenAPI Specs...", filename)
     fs.writeFileSync(filename, content, 'utf8');
     yamlLint.lint(content).then(() => {
         console.log(`${filename} is a valid YAML file.`);
