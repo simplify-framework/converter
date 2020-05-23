@@ -6,10 +6,10 @@ This is a facility toolkit to support converting from Serverless framework's YAM
 
 ```
 npm install -g simplify-converter
-simplify-converter serverless -i spec.yaml -o ../output -c config.yaml
+simplify-converter -i serverless.yaml -o .
 ```
 
-Serverless Framework example: `spec.yaml`
+Serverless Framework example: `serverless.yaml`
 
 ```yaml
 # For full config options, check the docs:
@@ -18,7 +18,7 @@ Serverless Framework example: `spec.yaml`
 #
 # Happy Coding!
 
-service: pets-service
+service: test-service
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
@@ -27,9 +27,28 @@ service: pets-service
 provider:
   name: aws
   runtime: nodejs12.x
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 's3:ListBucket'
+      Resource:
+        Fn::Join:
+          - ''
+          - - 'arn:aws:s3:::'
+            - Ref: SharedFileResourcesBucket
+    - Effect: 'Allow'
+      Action:
+        - 's3:PutObject'
+      Resource:
+        Fn::Join:
+          - ''
+          - - 'arn:aws:s3:::'
+            - Ref: SharedFileResourcesBucket
+            - '/*'
+
 functions:
   get-pets-list:
-    handler: src/index.handler
+    handler: src/handlers/index.handler
     events:
       - http:
           method: get
@@ -53,23 +72,21 @@ resources:
                 - POST
               AllowedOrigins:
                 - "*"
-              AllowedHeaders:
 ```
 
-Mapping Configuration: `config.yaml`
+> Resource dependancy will be generated into one CloudFormation YAML stack and be able to manage it independently.
 
-```
-ProjectName: ServerlessAPI
-ProjectDesc: Serverless to OpenAPI 3.0 specs
-DeploymentName: serverless-dev
-DeploymentRegion: eu-west-1
-DeploymentProfile: simplify-eu
-Mappings:
-  Functions:
-    'get-pets-list':
-      ServiceName: pets-service
-      ServiceModel: pets
-```
-TODO: there will be no need to have this!
-(Possible to convert directly from yaml)
-***Simplify Toolkit @Copyright 2020***
+# HOW TO: deploy external resources
+  Simplify Converter generates a set of managed stacks including Simplify SDK script to be able to run by npm commands:
+
+  ```bash
+  cd resources
+  npm install
+  npm run stack-deploy
+  ...
+  npm run stack-destroy
+  ```
+
+> Your AWS Credentials must be configured manually to have permission for deploying external resources.
+
+***Simplify Framework @Copyright 2020***
