@@ -1,4 +1,4 @@
-# Simplify Converter
+# Simplify Framework - Converter
   
 This is a facility toolkit to support converting from Serverless framework's YAML definition to OpenAPI 3.0 specs that compatible with Simplify specs definition.
 
@@ -76,7 +76,7 @@ resources:
 
 > Resource dependancy will be generated into one CloudFormation YAML stack and be able to manage it independently.
 
-# HOW TO: deploy external resources
+## HOW TO: Deploy external resources
   Simplify Converter generates a set of managed stacks including Simplify SDK script to be able to run by npm commands:
 
   ```bash
