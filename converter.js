@@ -9,34 +9,40 @@ const yamlLint = require('yaml-lint');
 const mkdirp = require('mkdirp');
 
 var argv = require('yargs')
-    .usage('simplify-converter serverless|openapi [options]')
-    .string('config')
-    .alias('c', 'config')
-    .describe('config', 'YAML configuration mapping template')
-    .string('serverless')
-    .alias('i', 'serverless')
-    .describe('serverless', 'Serverless spec file in YAML')
+    .usage('simplify-converter [options]')
+    .string('input')
+    .alias('i', 'input')
+    .describe('input', 'Input serveless spec YAML or function-arns.txt')
     .string('output')
     .alias('o', 'output')
     .describe('output', 'output directory')
-    .default('output', './output')
+    .default('output', './')
     .boolean('verbose')
     .describe('verbose', 'Increase verbosity')
     .alias('v', 'verbose')
     .demandOption(['i', 'o'])
-    .demandCommand(1)
+    .demandCommand(0)
     .argv;
 
 function runCommandLine() {
-    const cfgYAML = fs.readFileSync(path.resolve(argv.config || 'specs/config.yaml'), 'utf8')
-    let config = yaml.parse(cfgYAML, { prettyErrors: false });
-    main(config, fs.readFileSync(path.resolve(argv.serverless || 'specs/serverless.yaml'), 'utf8'))
+    try {
+        const yamlData = fs.readFileSync(path.resolve(argv.input || 'samples/serverless.yaml'), 'utf8')
+        main({}, yamlData)
+    } catch(err) {
+        console.error(`${err}`)
+    }
 }
 
 String.prototype.toTextSpace = function () {
     return this.replace(/([A-Z])/g, (match) => ` ${match}`)
         .replace(/^./, (match) => match.toUpperCase())
         .trim()
+}
+
+String.prototype.toSnake = function () {
+    return this.replace(/([A-Z])/g, (match) => `-${match}`)
+        .replace(/^./, (match) => match.toLowerCase())
+        .trim().toLowerCase().slice(1)
 }
 
 String.prototype.toCamelCase = function () {
@@ -83,33 +89,98 @@ function convertResources(obj) {
     return arr;
 }
 
+function buildTemplateFile(data, tplFile) {
+    const oFile= fs.readFileSync(path.resolve(__dirname, 'templates', tplFile), 'utf8')
+    let template = Hogan.compile(oFile);
+    return template.render(Object.assign({ ...data }), {});
+}
+
+function extractServicePolicy(name, data) {
+    let content = buildTemplateFile(data, 'iamrole.mustache')
+    let yamlData = yaml.parse(content, { prettyErrors: false })
+    yamlData.Properties.PolicyDocument = data
+    return yamlData
+}
+
+function buildExternalResources(name, resources, iampolicy) {
+    let content = buildTemplateFile({}, 'resource.mustache')
+    let yamlData = yaml.parse(content, { prettyErrors: false })
+    yamlData.Resources = {}
+    resources.map(r => {
+        yamlData.Resources[`${r.Name}`] = r.Value
+        yamlData.Outputs[`${r.Name}`] = { "Value": { "Ref": `${r.Name}` } }
+    })
+    yamlData.Resources[`${name}IAMPolicy`] = iampolicy
+    yamlData.Outputs[`${name}IAMPolicy`] = { "Value": { "Ref": `${name}IAMPolicy` } }
+    return yamlData
+}
+
+function writeTemplateFile(tplFile, data, outputPath, file) {
+    const dataFile = buildTemplateFile(data, tplFile)
+    var filename = path.join(outputPath, file)
+    if (!fs.existsSync(outputPath)) {
+        mkdirp.sync(outputPath);
+    }
+    console.log("Generating Resource Specs...", filename)
+    fs.writeFileSync(filename, dataFile, 'utf8');
+}
+
+function writeYAMLFile(rName, data, output, location) {
+    var rYaml = yaml.parse(JSON.stringify(data), { prettyErrors: false });
+    var filePath = path.join(output, location || '')
+    var filename = path.resolve(filePath, rName)
+    if (!fs.existsSync(filePath)) {
+        mkdirp.sync(filePath);
+    }
+    console.log("Generating Resource Specs...", filename)
+    fs.writeFileSync(filename, yaml.stringify(rYaml), 'utf8');
+}
+
+function getProjectInfo(o) {
+    return {
+        ProjectDesc: o.service.toPascalCase().toTextSpace(),
+        ProjectName: o.service.toPascalCase(),
+        DeploymentName: o.service.toPascalCase() + "Demo",
+        DeploymentRegion: "eu-west-1",
+        DeploymentProfile: "simplify-eu"
+    }
+}
+
 function main(config, specs) {
     let o = yaml.parse(specs, { prettyErrors: false });
-    if (argv.verbose) console.log(`Loaded ${argv._[0]} definition:`, o.functions);
-    function getMappingFunction(config, f) {
-        return config.Mappings.Functions[f]
-    }
-    var globalResources = []
+    if (argv.verbose) console.log(`Loaded definition:`, o.functions);
+    config = { ...config, ...getProjectInfo(o) }
+    var Resources = []
     Object.keys(o.resources.Resources).map(function (k) {
-        var rName = k + '.yaml';
-        var rYaml = yaml.parse(JSON.stringify(o.resources.Resources[k]), { prettyErrors: false });
-        var filePath = path.join(argv.output, 'resources')
-        var filename = path.resolve(filePath, rName)
-        if (!fs.existsSync(filePath)) {
-            mkdirp.sync(filePath);
-        }
-        console.log("Generating Resource Specs...", filename)
-        fs.writeFileSync(filename, yaml.stringify(rYaml), 'utf8');
-        globalResources.push({ Value: path.join(argv.output, 'resources', rName) })
+        Resources.push({ Value: o.resources.Resources[k], Name: k })
     })
+    const IAMRolePolicy = extractServicePolicy(config.ProjectName, o.provider.iamRoleStatements)
+    const externalResource = buildExternalResources(config.ProjectName, Resources, IAMRolePolicy)
+    writeYAMLFile(`${config.ProjectName}.yaml`, externalResource, argv.output, 'resources')
+    const outputFile = path.join(argv.output, "resources")
+    writeTemplateFile("package.mustache", { ProjectNameSnake: config.ProjectName.toSnake() }, outputFile, "package.json")
+    writeTemplateFile("resource-create.mustache", {
+        ProjectName: config.ProjectName,
+        ProjectNameSnake: config.ProjectName.toSnake(),
+        GeneratorVersion: require('./package.json').version,
+    }, outputFile, "resource-create.js")
+    writeTemplateFile("resource-input.mustache", {
+        ProjectName: config.ProjectName,
+        ProjectNameSnake: config.ProjectName.toSnake(),
+        GeneratorVersion: require('./package.json').version,
+        ...config
+    }, outputFile, "resource-input.json")
+
     var ResourcePaths = {}
     Object.keys(o.functions).map(function (k) {
         if (o.functions[k].events) {
-            var service = getMappingFunction(config, k)
+            var service = {}
             if (service) {
                 o.functions[k].events.map(function (evt) {
                     if (evt.http) {
+                        service.ServiceName = o.service
                         service.ResourceType = 'x-api'
+                        service.ServicePolicy = o.iamRoleStatements
                         service.ServiceRuntime = o.provider.runtime || 'nodejs12.x'
                         service.ResourcePath = service.ResourcePath || evt.http.path.toLowerCase()
                         service.ResourceMethod = service.ResourceMethod || evt.http.method.toLowerCase()
@@ -126,12 +197,9 @@ function main(config, specs) {
             }
         }
     })
-    const oYAML = fs.readFileSync(path.resolve(__dirname, 'openapi.mustache'), 'utf8')
+    const oYAML = fs.readFileSync(path.resolve(__dirname, 'templates', 'openapi.mustache'), 'utf8')
     let template = Hogan.compile(oYAML);
-    let content = template.render(Object.assign({
-        GlobalResources: globalResources,
-        hasGlobalResource: globalResources.length > 0 ? true: false
-    }, { ResourcePaths: convertResources(ResourcePaths) }, config), {});
+    let content = template.render(Object.assign({}, { ResourcePaths: convertResources(ResourcePaths) }, config), {});
 
     if (!fs.existsSync(argv.output)) {
         mkdirp.sync(argv.output);

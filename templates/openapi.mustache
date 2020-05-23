@@ -3,18 +3,19 @@ info:
   version: demo
   title: {{ProjectDesc}}
 x-project-name: {{ProjectName}}
-x-api-gateway-name: {{ProjectName}}Gateway
+x-api-gateway-name: {{ProjectName}}RestApi
 x-deployment-name: {{DeploymentName}}
 x-deployment-region: {{DeploymentRegion}}
-x-deployment-profile: {{AWSProfile}}
-x-api-authorizer-id: {{CognitoUserPoolId}}
+x-deployment-profile: {{DeploymentProfile}}
+{{#AuthorizationId}}
+x-api-authorizer-id: {{AuthorizationId}}
+{{/AuthorizationId}}
 paths:
   {{#ResourcePaths}}
   '/{{ResourcePath}}':
     {{#ResourceData}}
     {{#-first}}
     {{ResourceType}}-service-name: {{ServiceName}}
-    {{ResourceType}}-service-version: 0.1.1
     {{#ServiceTag}}
     {{ResourceType}}-service-tag: {{ServiceTag}}
     {{/ServiceTag}}
@@ -24,6 +25,9 @@ paths:
     {{#ServiceRuntime}}
     {{ResourceType}}-service-runtime: {{ServiceRuntime}}
     {{/ServiceRuntime}}
+    {{#ServicePolicy}}
+    {{ResourceType}}-service-policy: {{ServicePolicy}}
+    {{/ServicePolicy}}
     {{#ServiceModel}}
     {{ResourceType}}-service-model-name: {{ServiceModel}}
     {{ResourceType}}-service-passthrough: true
@@ -59,9 +63,3 @@ paths:
   {{/ResourcePaths}}
 servers:
   - url: /
-{{#hasGlobalResource}}
-x-aws-global-resources:
-  {{#GlobalResources}}
-  - {{Value}}
-  {{/GlobalResources}}
-{{/hasGlobalResource}}
