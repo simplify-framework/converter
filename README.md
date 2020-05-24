@@ -21,7 +21,7 @@ Serverless Framework example: `serverless.yaml`
 #
 # Happy Coding!
 
-service: test-service
+service: pets-service
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
@@ -60,9 +60,8 @@ functions:
       - schedule: rate(2 hours)
       - cloudwatchLog: '/aws/lambda/hello'
       - sns:
-          arn: arn:aws:sns:us-east-1:00000000000:topicname
-          topicName: topicname-account-1-us-east-1
-
+          arn: arn:aws:sns:${self:provider.region}:${self:provider.accountId, '01234567890'}:topicname
+          topicName: topicname-${self:provider.accountId, '01234567890'}-${self:provider.region}
 plugins:
   - serverless-webpack
   - serverless-plugin-log-retention
@@ -72,7 +71,7 @@ resources:
     SharedFileResourcesBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: my-shared-files-bucket
+        BucketName: ${self:service}-bucket
         CorsConfiguration:
           CorsRules:
             - AllowedMethods:

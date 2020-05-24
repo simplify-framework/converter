@@ -1,7 +1,7 @@
 {
   "name": "simplify-converter",
-  "version": "0.1.6",
-  "description": "Simplify Converter from Serverless into OpenAPI 3.0",
+  "version": "0.1.7",
+  "description": "Convert from Serverless YAML into OpenAPI 3.0",
   "main": "converter.js",
   "bin": {
     "simplify-converter": "converter.js"
@@ -15,6 +15,7 @@
   },
   "keywords": [
     "converter",
+    "openapi",
     "lambda",
     "aws"
   ],

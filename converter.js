@@ -7,6 +7,10 @@ const yaml = require('yaml');
 const Hogan = require('hogan.js');
 const yamlLint = require('yaml-lint');
 const mkdirp = require('mkdirp');
+const CBEGIN = '\x1b[33m'
+const CDONE = '\x1b[32m'
+const CRESET = '\x1b[0m'
+process.env.YAML_SILENCE_WARNINGS = true
 
 var argv = require('yargs')
     .usage('simplify-converter [options]')
@@ -95,16 +99,19 @@ function buildTemplateFile(data, tplFile) {
     return template.render(Object.assign({ ...data }), {});
 }
 
-function extractServicePolicy(name, data) {
-    let content = buildTemplateFile(data, 'iamrole.mustache')
-    let yamlData = yaml.parse(content, { prettyErrors: false })
-    yamlData.Properties.PolicyDocument = data
+function extractServicePolicy(name, data, o) {
+    let content = buildTemplateFile({ ...data, ProjectName: name}, 'iamrole.mustache')
+    let yamlData = yamlParse(content)
+    yamlData.Properties.PolicyDocument = {
+        Version: '2012-10-17',
+        Statement: serverlessValueParse(data, o)
+    }
     return yamlData
 }
 
 function buildExternalResources(name, resources, iampolicy) {
     let content = buildTemplateFile({}, 'resource.mustache')
-    let yamlData = yaml.parse(content, { prettyErrors: false })
+    let yamlData = yamlParse(content)
     yamlData.Resources = {}
     resources.map(r => {
         yamlData.Resources[`${r.Name}`] = r.Value
@@ -125,37 +132,88 @@ function writeTemplateFile(tplFile, data, outputPath, file) {
 }
 
 function writeYAMLFile(rName, data, output, location) {
-    var rYaml = yaml.parse(JSON.stringify(data), { prettyErrors: false });
+    var rYaml = yamlParse(JSON.stringify(data));
     var filePath = path.join(output, location || '')
     var filename = path.resolve(filePath, rName)
     if (!fs.existsSync(filePath)) {
         mkdirp.sync(filePath);
     }
-    fs.writeFileSync(filename, yaml.stringify(rYaml), 'utf8');
+    fs.writeFileSync(filename, yamlStringify(rYaml), 'utf8');
 }
 
 function getProjectInfo(o) {
     return {
         ProjectDesc: o.service.toPascalCase().toTextSpace(),
-        ProjectName: o.service.toPascalCase(),
+        ProjectName: o.name || o.service.toPascalCase(),
         DeploymentName: o.service.toPascalCase() + "Demo",
-        DeploymentRegion: "eu-west-1",
-        DeploymentProfile: "simplify-eu"
+        DeploymentRegion: o.provider.region || "eu-west-1",
+        DeploymentProfile: o.provider.profile || "simplify-eu"
     }
 }
 
+function serverlessValueParse(obj, o) {
+    if (!obj) return undefined
+    Object.keys(obj).map(objk => {
+        function parseVar(value, o) {
+            if (value.indexOf("${") >=0 && value.indexOf("}") >=0) {
+                let result = ''
+                const vals = value.replace(/\$\{/g, 'TOEK3N_____').replace(/}/g,'TOEK3N_____').split('TOEK3N_____')
+                vals.forEach((valueNotEmpty, idx) => {
+                    if (valueNotEmpty) {
+                        let mutableValues = valueNotEmpty.replace(/\$\{/g,'').replace(/}/g,'').split(',').map(vm => {
+                            let vIter = o
+                            const vkeys = vm.trim().split('.')
+                            vkeys.forEach(vk => { 
+                                if (vm.startsWith("self:") || vm.startsWith("opt:")) {
+                                    vIter = vIter[vk.replace(/self\:/g,'').replace(/opt\:/g,'')] || ''
+                                } else {
+                                    vIter = vIter[vk.replace(/self\:/g,'').replace(/opt\:/g,'')] || vk.replace(/\'/g,'').replace(/\"/g,'')
+                                }
+                            })
+                            return vIter
+                        })
+                        const temp = mutableValues.find(vt => (vt != ''))
+                        result += parseVar(temp, o)
+                    }
+                })
+                return result
+            }
+            return value
+        }
+        if (typeof obj[objk] === "string") {
+            obj[objk] = parseVar(obj[objk], o)
+        } else {
+            obj[objk] = serverlessValueParse(obj[objk], o)
+        }
+    })
+    return obj
+}
+
+function yamlParse(specs) {
+    return yaml.parse(specs, { prettyErrors: false, schema: 'failsafe' });
+}
+
+function yamlStringify(o) {
+    return yaml.stringify(o)
+}
+
 function main(config, specs) {
-    let o = yaml.parse(specs, { prettyErrors: false });
+    let o = yamlParse(specs);
     if (argv.verbose) console.log(`Loaded definition:`, o.functions);
+    o.provider.stage = o.provider.stage || 'stable'
+    o.provider.region = o.provider.region || 'eu-west-1'
+    o.opt = o.opt || {}
     config = { ...config, ...getProjectInfo(o) }
     var Resources = []
     Object.keys(o.resources.Resources).map(function (k) {
-        Resources.push({ Value: o.resources.Resources[k], Name: k })
+        Resources.push({ Value: serverlessValueParse(o.resources.Resources[k], o), Name: k })
     })
-    const IAMRolePolicy = extractServicePolicy(config.ProjectName, o.provider.iamRoleStatements)
+    const IAMRolePolicy = extractServicePolicy(config.ProjectName, o.provider.iamRoleStatements, o)
     const externalResource = buildExternalResources(config.ProjectName, Resources, IAMRolePolicy)
-    
-    console.log(" - Working for External Resources...")
+    console.log("╓───────────────────────────────────────────────────────────────╖")
+    console.log("║               Simplify Framework  - Converter                 ║")
+    console.log("╙───────────────────────────────────────────────────────────────╜")
+    console.log(" - Working to extract resource stack...", `${CDONE}OK${CRESET}`)
     writeYAMLFile(`${config.ProjectName}.yaml`, externalResource, argv.output, 'resources')
     const outputFile = path.join(argv.output, "resources")
     writeTemplateFile("package.mustache", { ProjectNameSnake: config.ProjectName.toPascalCase().toSnake() }, outputFile, "package.json")
@@ -171,7 +229,7 @@ function main(config, specs) {
         ...config
     }, outputFile, "resource-input.json")
 
-    console.log(" - Working for OpenAPI 3.0 Specs...")
+    console.log(" - Working to generate OpenAPI 3.0 Specs...", `${CDONE}OK${CRESET}`)
     var ResourcePaths = {}
     Object.keys(o.functions).map(function (k) {
         if (o.functions[k].events) {
@@ -208,11 +266,11 @@ function main(config, specs) {
                                 const value = Object.keys(tag).map(k => {
                                     return `${k}(${tag[k]})`
                                 })
-                                return { ServiceTag: `Name=${idx},Value=${value}` }
+                                return { ServiceTag: `Key=${idx};Value=${value}` }
                             })
                         } else {
                             service.ServiceTags = Object.keys(service.ServiceTags).map(k => {
-                                return { ServiceTag: `Name=${k},Value=${service.ServiceTags[k]}` }
+                                return { ServiceTag: `Key=${k};Value=${service.ServiceTags[k]}` }
                             })
                         }
                     } else {
@@ -223,6 +281,7 @@ function main(config, specs) {
                 service.ServiceRuntime = o.provider.runtime || 'nodejs12.x'
                 service.OperationName = service.OperationName || k.toCamelCase()
                 service.Description = service.OperationName.toPascalCase().toTextSpace()
+                service = serverlessValueParse(service, o)
                 if (!ResourcePaths[service.ResourcePath]) {
                     ResourcePaths[service.ResourcePath] = []
                 }
@@ -240,7 +299,8 @@ function main(config, specs) {
     var filename = path.resolve(path.join(argv.output, 'openapi.yaml'))
     fs.writeFileSync(filename, content, 'utf8');
     yamlLint.lint(content).then(() => {
-        console.log(`${filename} is a valid YAML file.`);
+        console.log(`\n * Install codegen\t: ${CBEGIN}npm install simplify-codegen -g ${CRESET}`)
+        console.log(` * Generate project\t: ${CBEGIN}simplify-codegen generate -i openapi.yaml ${CRESET}\n`)
     }).catch((error) => {
         console.error(`Invalid YAML file ${error}.`);
     });
